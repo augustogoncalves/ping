@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Endpoint test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <style>
+        canvas {
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+    </style>
+</head>
+
+<body>
+    <input type="text" size="100" id="endpoint" value="http://localhost:5000/api/company" value1="https://9tevqm5cke.execute-api.us-west-2.amazonaws.com/Prod/api/objectcode?id=%23&_=152174183448">
+    <button id="start">Start</button>
+    <button id="stop">Stop</button>
+    <div style="width:100%;">
+        <canvas id="canvas"></canvas>
+    </div>
+    Average:
+    <span id="average"></span>
+    | Max:
+    <span id="max"></span>
+    | Min:
+    <span id="min"></span>
+    | Std Deviation:
+    <span id="stddev"></span>
+    <script>
+        $(document).ready(function () {
+            var ctx = document.getElementById('canvas').getContext('2d');
+            window.myLine = new Chart(ctx, config);
+            $("#endpoint").val(getCookie("endpoint"));
+        });
+
+        var run = false;
+        $("#start").click(function () {
+            var endpoint = $("#endpoint").val();
+            if (endpoint === '' || endpoint.length < 10) {
+                alert('Invalid endpoint');
+                return
+            };
+
+            run = true;
+            runRequest();
+            setCookie("endpoint", endpoint, 365);
+        });
+
+        $("#stop").click(function () {
+            run = false;
+        });
+
+        function runRequest() {
+            if (!run) return;
+            if (config.data.datasets.length > 0) {
+                var start_time = new Date().getTime();
+
+                jQuery.get($("#endpoint").val(), null, null).always(
+                    function (data, status, xhr) {
+                        if (data.status == 404) {
+                            alert('Not found');
+                            return;
+                        }
+                        var request_time = new Date().getTime() - start_time;
+
+                        config.data.labels.push(config.data.datasets[0].data.length + 1);
+                        config.data.datasets[0].data.push(request_time);
+                        window.myLine.update();
+
+                        calcStats();
+
+                        runRequest();
+                    }
+                );
+            }
+        }
+
+        function calcStats() {
+            var total = 0;
+            var max = 0;
+            var min = Number.MAX_VALUE;
+            config.data.datasets[0].data.forEach(function (data) {
+                total += data;
+                if (data > max) max = data;
+                if (data < min) min = data;
+            });
+            var average = Math.round(total / config.data.datasets[0].data.length)
+            $("#average").html(average);
+            $("#max").html(max);
+            $("#min").html(min);
+
+            var sqDiff = 0;
+            config.data.datasets[0].data.forEach(function (data) {
+                var diff = data - average;
+                sqDiff += (diff * diff);
+            });
+            $("#stddev").html(Math.round(Math.sqrt(sqDiff / config.data.datasets[0].data.length)));
+        }
+
+        var config = {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Response time',
+                    backgroundColor: 'rgb(255, 99, 132)',
+                    borderColor: 'rgb(255, 99, 132)',
+                    data: [],
+                    fill: false,
+                }],
+            },
+            options: {
+                responsive: true,
+                title: {
+                    display: true,
+                    text: 'Response time'
+                },
+                scales: {
+                    xAxes: [{
+                        display: false,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Requests'
+                        }
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Response time (ms)'
+                        }
+                    }]
+                }
+            }
+        };
+
+        // https://www.w3schools.com/js/js_cookies.asp
+        function setCookie(cname, cvalue, exdays) {
+            var d = new Date();
+            d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+            var expires = "expires=" + d.toUTCString();
+            document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+        }
+
+        // https://www.w3schools.com/js/js_cookies.asp
+        function getCookie(cname) {
+            var name = cname + "=";
+            var decodedCookie = decodeURIComponent(document.cookie);
+            var ca = decodedCookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        }
+    </script>
+</body>
+
+</html>
