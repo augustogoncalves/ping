@@ -18,17 +18,20 @@
     <input type="text" size="100" id="endpoint">
     <button id="start">Start</button>
     <button id="stop">Stop</button>
+    <button id="clear">Clear results</button>
     <div style="width:100%;">
         <canvas id="canvas"></canvas>
     </div>
-    Average:
-    <span id="average"></span>
-    | Max:
-    <span id="max"></span>
-    | Min:
-    <span id="min"></span>
-    | Std Deviation:
-    <span id="stddev"></span>
+    <div style="text-align:center;">
+        Average:
+        <span id="average"></span>
+        - Max:
+        <span id="max"></span>
+        - Min:
+        <span id="min"></span>
+        - Std Deviation:
+        <span id="stddev"></span>
+    </div>
     <script>
         $(document).ready(function () {
             var ctx = document.getElementById('canvas').getContext('2d');
@@ -51,6 +54,12 @@
 
         $("#stop").click(function () {
             run = false;
+        });
+
+        $("#clear").click(function () {
+            config.data.labels = [];
+            config.data.datasets[0].data = [];
+            window.myLine.update();
         });
 
         function runRequest() {
@@ -112,6 +121,9 @@
                 }],
             },
             options: {
+                legend: {
+                    display: false
+                },
                 responsive: true,
                 title: {
                     display: true,
